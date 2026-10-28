@@ -83,7 +83,7 @@ spec:
       initContainers:
         - name: copy-config
           image: busybox:1.36
-          command: ["sh", "-c", "cp -L /config-src/. /app/rctf.d/"]
+          command: ["sh", "-c", "cp -L /config-src/* /app/rctf.d/"]
           volumeMounts:
             - name: rctf-d-src
               mountPath: /config-src
