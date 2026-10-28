@@ -77,6 +77,18 @@ spec:
         app: rctf
     spec:
       serviceAccountName: rctf
+      # rctf's config loader skips anything that is not a regular file, and
+      # configMap volumes mount files as symlinks -- so copy them into an
+      # emptyDir first.
+      initContainers:
+        - name: copy-config
+          image: busybox:1.36
+          command: ["sh", "-c", "cp -L /config-src/. /app/rctf.d/"]
+          volumeMounts:
+            - name: rctf-d-src
+              mountPath: /config-src
+            - name: rctf-d
+              mountPath: /app/rctf.d
       containers:
         - name: rctf
           image: ghcr.io/otter-sec/rctf:main
@@ -128,9 +140,11 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
       volumes:
-        - name: rctf-d
+        - name: rctf-d-src
           configMap:
             name: rctf-config
+        - name: rctf-d
+          emptyDir: {}
         - name: uploads
           persistentVolumeClaim:
             claimName: rctf-uploads
