@@ -6,6 +6,10 @@
 # (see its `allow-ingress-traefik` NetworkPolicy), and exposes entrypoints:
 #   web (80), websecure (443), tcp (1337).
 #
+# TLS is terminated on the proxy in front of the VM, never on traefik:
+# web (80) and websecure (443) are both plain-HTTP entrypoints; tcp (1337) is
+# SNI passthrough.
+#
 # NOTE: this HelmChartConfig is merged with the k3s bootstrap HelmChart
 # (kube-system/traefik, rancher-mirrored traefik chart 40.1.5+up40.1.0).
 # The previously configured service.spec values (externalIPs) are preserved.
@@ -35,10 +39,10 @@ spec:
           middlewares:
             - traefik-global-errors@kubernetescrd
       websecure:
-        # TLS is terminated on the proxy in front of the VM: websecure (443)
-        # receives plain HTTP from the proxy, so no TLS on traefik.
-        tls:
-          enabled: false
         http:
+          # TLS is terminated on the proxy in front of the VM: websecure (443)
+          # receives plain HTTP from the proxy, so no TLS on traefik.
+          tls:
+            enabled: false
           middlewares:
             - traefik-global-errors@kubernetescrd
