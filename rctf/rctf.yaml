@@ -1,0 +1,138 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rctf-config
+  namespace: rctf
+data:
+  00-main.yaml: |
+    ctfName: lit1537 CTF
+    meta:
+      description: 'lit1537 CTF platform'
+    homeContent: |
+      Welcome to the lit1537 CTF!
+
+      <timer></timer>
+    origin: http://rctf.lit1537.infra
+    divisions:
+      open: Open
+    startTime: 0
+    endTime: 99999999999999
+    database:
+      sql:
+        host: postgres.rctf.svc.cluster.local
+        port: 5432
+        user: rctf
+        database: rctf
+      redis:
+        host: redis.rctf.svc.cluster.local
+        port: 6379
+      migrate: before
+    defaultInstancer: k8s
+    instancers:
+      k8s:
+        name: instancers/k8s
+        options:
+          inCluster: true
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rctf-uploads
+  namespace: rctf
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rctf
+  namespace: rctf
+spec:
+  selector:
+    app: rctf
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rctf
+  namespace: rctf
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rctf
+  template:
+    metadata:
+      labels:
+        app: rctf
+    spec:
+      serviceAccountName: rctf
+      containers:
+        - name: rctf
+          image: ghcr.io/otter-sec/rctf:main
+          ports:
+            - containerPort: 80
+          env:
+            - name: RCTF_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rctf-secrets
+                  key: database-password
+            - name: RCTF_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rctf-secrets
+                  key: redis-password
+            - name: RCTF_TOKEN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rctf-secrets
+                  key: token-key
+          volumeMounts:
+            - name: rctf-d
+              mountPath: /app/rctf.d
+            - name: uploads
+              mountPath: /app/uploads
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: rctf-d
+          configMap:
+            name: rctf-config
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: rctf-uploads
+        - name: tmp
+          emptyDir: {}

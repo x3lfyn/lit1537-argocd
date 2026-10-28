@@ -1,0 +1,25 @@
+# ClusterRole for the rctf service account (namespace rctf), mirroring
+# rctf/deploy/terraform/instancer/example/rctf-operator.tf. The rctf API uses it
+# with `instancers/k8s` provider option `inCluster: true` to manage
+# ChallengeInstance resources without a long-lived token secret.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rctf-instancer
+rules:
+  - apiGroups: ["rctf.osec.io"]
+    resources: ["challengeinstances"]
+    verbs: ["create", "get", "delete", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rctf-instancer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rctf-instancer
+subjects:
+  - kind: ServiceAccount
+    name: rctf
+    namespace: rctf

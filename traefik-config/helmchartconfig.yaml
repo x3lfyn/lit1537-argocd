@@ -1,0 +1,42 @@
+# Relocates the k3s-managed traefik release into the `traefik` namespace and adds
+# the extra `tcp` entrypoint (1337) required by the rCTF k8s instancer.
+#
+# The rctf k8s-operator hardcodes that instance traffic enters through traefik
+# pods labeled app.kubernetes.io/name=traefik running in namespace `traefik`
+# (see its `allow-ingress-traefik` NetworkPolicy), and exposes entrypoints:
+#   web (80), websecure (443), tcp (1337).
+#
+# NOTE: this HelmChartConfig is merged with the k3s bootstrap HelmChart
+# (kube-system/traefik, rancher-mirrored traefik chart 40.1.5+up40.1.0).
+# The previously configured service.spec values (externalIPs) are preserved.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    namespaceOverride: traefik
+    service:
+      spec:
+        ipFamilyPolicy: "PreferDualStack"
+        externalIPs:
+          - "192.168.220.16"
+          - "100.109.242.58"
+    ports:
+      tcp:
+        port: 1337
+        expose:
+          default: true
+        exposedPort: 1337
+        protocol: TCP
+      web:
+        http:
+          middlewares:
+            - traefik-global-errors@kubernetescrd
+      websecure:
+        tls:
+          enabled: true
+        http:
+          middlewares:
+            - traefik-global-errors@kubernetescrd

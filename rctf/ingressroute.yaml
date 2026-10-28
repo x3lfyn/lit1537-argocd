@@ -1,0 +1,15 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: rctf
+  namespace: rctf
+spec:
+  entryPoints:
+    - web
+  routes:
+    - kind: Rule
+      match: Host(`rctf.lit1537.infra`)
+      priority: 10
+      services:
+        - name: rctf
+          port: 80
