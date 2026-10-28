@@ -35,8 +35,10 @@ spec:
           middlewares:
             - traefik-global-errors@kubernetescrd
       websecure:
+        # TLS is terminated on the proxy in front of the VM: websecure (443)
+        # receives plain HTTP from the proxy, so no TLS on traefik.
         tls:
-          enabled: true
+          enabled: false
         http:
           middlewares:
             - traefik-global-errors@kubernetescrd

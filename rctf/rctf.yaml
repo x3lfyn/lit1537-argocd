@@ -12,7 +12,7 @@ data:
       Welcome to the lit1537 CTF!
 
       <timer></timer>
-    origin: http://rctf.lit1537.infra
+    origin: https://board.lit.x3lfy.space
     divisions:
       open: Open
     startTime: 0

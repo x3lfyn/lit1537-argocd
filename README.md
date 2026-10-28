@@ -10,24 +10,27 @@ with its Kubernetes instancer.
 | --- | --- | --- |
 | `bootstrap/` | `root` (apply once manually) | app-of-apps pointing at `apps/` |
 | `apps/` | — | ArgoCD Application manifests for the apps below |
-| `traefik-config/` | `traefic-config` | HelmChartConfig relocating the k3s traefik release into ns `traefik` + `tcp` entrypoint (1337), error-pages deployment, `global-errors` Middleware, catch-all IngressRoute, default TLSStore |
+| `traefik-config/` | `traefic-config` | HelmChartConfig relocating the k3s traefik release into ns `traefik` + `tcp` entrypoint (1337), plain-HTTP `websecure`, error-pages deployment, `global-errors` Middleware, catch-all IngressRoute |
 | `rctf/` | `rctf` | rCTF bundle (Deployment + config), PostgreSQL 18, Redis 8.2, ServiceAccount, IngressRoute for `rctf.lit1537.infra` |
 | `rctf-instancer/` | `rctf-instancer` | vendored rctf k8s-operator (`dist/install.yaml` with `INSTANCER_HOST=inst.lit.x3lfy.space`) + ClusterRole/Binding for the rctf ServiceAccount |
 
 ## Hostnames / routing
 
-- **rCTF UI**: `http://rctf.lit1537.infra` — served by the cluster traefik
-  (entrypoint `web`). Add `100.109.242.58 rctf.lit1537.infra` to `/etc/hosts`
-  (same pattern as `argocd.lit1537.infra`).
-- **Instances**: `<prefix>-<uid>.inst.lit.x3lfy.space` — a wildcard proxy
-  outside the cluster forwards `*.inst.lit.x3lfy.space` (ports 80/443/1337,
-  **TCP passthrough**, preserving Host/SNI) to the node's tailscale IP
-  `100.109.242.58`. The proxy must be L4: the operator hardcodes the published
-  ports (http → 80, https → 443, tcp-ssl → 1337) and https/tcp routes are
-  matched by SNI/Host at traefik.
-- HTTPS instances terminate TLS at traefik with the default TLSStore
-  (`instancer-wildcard-tls` in ns `traefik`, self-signed — expect a browser
-  warning; replace the secret with a real `*.inst.lit.x3lfy.space` cert to fix).
+TLS is terminated on the proxy in front of the VM, never on traefik.
+
+- **rCTF UI**: `https://board.lit.x3lfy.space` — proxy terminates TLS and
+  forwards plain HTTP (Host preserved) to the node (`100.109.242.58`) on
+  port 80 or 443 (both are plain-HTTP entrypoints: `web` / `websecure`).
+- **Instances**: `<prefix>-<uid>.inst.lit.x3lfy.space` — instance hostnames
+  are one level below `inst.lit.x3lfy.space`.
+- **http expose kind (port 80)**: proxy forwards plain HTTP to node:80.
+- **https expose kind (port 443)**: proxy terminates TLS and forwards plain
+  HTTP (Host preserved) to node:443 — the `websecure` entrypoint is plain
+  HTTP on purpose. Direct `http://` hits on node:80 get a 302 to `https://`
+  from the operator's redirect route, so the proxy can forward port 80 as-is.
+- **tcp-ssl expose kind (port 1337)**: raw TCP passthrough (SNI preserved,
+  no TLS termination anywhere in the path — traefik routes by SNI and passes
+  the TLS stream through to the challenge pod).
 
 ## Traefik notes
 
@@ -52,16 +55,6 @@ kubectl -n rctf create secret generic rctf-secrets \
   --from-literal=database-password="$(openssl rand -hex 24)" \
   --from-literal=redis-password="$(openssl rand -hex 24)" \
   --from-literal=token-key="$(openssl rand -base64 32)"
-```
-
-`traefik/instancer-wildcard-tls` in ns `traefik` (self-signed wildcard):
-
-```sh
-openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
-  -keyout tls.key -out tls.crt \
-  -subj "/CN=*.inst.lit.x3lfy.space" \
-  -addext "subjectAltName=DNS:*.inst.lit.x3lfy.space,DNS:inst.lit.x3lfy.space"
-kubectl -n traefik create secret tls instancer-wildcard-tls --cert=tls.crt --key=tls.key
 ```
 
 ## Vendored code
