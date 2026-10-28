@@ -57,6 +57,14 @@ kubectl -n rctf create secret generic rctf-secrets \
   --from-literal=token-key="$(openssl rand -base64 32)"
 ```
 
+## Notes
+
+- After changing `rctf/rctf-config`, restart the app to pick it up:
+  `kubectl -n rctf rollout restart deploy/rctf` (config is copied into the
+  pod at startup and is not watched).
+- Websecure TLS is disabled via the chart values path
+  `ports.websecure.http.tls.enabled: false` (note the `http` level).
+
 ## Vendored code
 
 - `rctf-instancer/operator.yaml` is `apps/k8s-operator/dist/install.yaml` from
