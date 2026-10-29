@@ -65,12 +65,19 @@ kubectl -n rctf create secret generic rctf-secrets \
 - Websecure TLS is disabled via the chart values path
   `ports.websecure.http.tls.enabled: false` (note the `http` level).
 
-## Vendored code
+## Vendored code / custom images
 
-- `rctf-instancer/operator.yaml` is `apps/k8s-operator/dist/install.yaml` from
-  https://github.com/otter-sec/rctf (image `ghcr.io/otter-sec/rctf/k8s-operator:latest`)
-  with `INSTANCER_HOST` replaced by `inst.lit.x3lfy.space`. Re-vendor it when
-  upgrading the operator.
+- `rctf` and `rctf-instancer` use images built from the fork
+  https://github.com/x3lfyn/rctf (branch `main` = upstream main + fixes),
+  published at `ghcr.io/x3lfyn/rctf:main` and `ghcr.io/x3lfyn/rctf/k8s-operator:main`:
+  - upstream PR [#235](https://github.com/otter-sec/rctf/pull/235) — API-side
+    validation/hashing of the challenge integration id (`inst-<id>-<team>` must
+    fit the 63-char namespace name limit)
+  - local patch `fix(k8s-operator): bound instance namespace name to 63 chars` —
+    operator-side truncate+hash defense so any IDs produce a valid namespace
+- `rctf-instancer/operator.yaml` is based on `apps/k8s-operator/dist/install.yaml`
+  from the fork with `INSTANCER_HOST` replaced by `inst.lit.x3lfy.space`. Re-vendor
+  it when updating the operator.
 - `traefik-config/error-pages.yaml` and `traefik-config/traefik-extras.yaml`
   mirror `rctf/deploy/terraform/instancer/modules/k8s/` (traefik.tf,
   error-pages/).

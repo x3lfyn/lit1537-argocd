@@ -4299,7 +4299,7 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: ghcr.io/otter-sec/rctf/k8s-operator:latest
+        image: ghcr.io/x3lfyn/rctf/k8s-operator:main
         livenessProbe:
           httpGet:
             path: /healthz
