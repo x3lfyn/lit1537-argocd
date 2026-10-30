@@ -4294,12 +4294,13 @@ spec:
       containers:
       - args:
         - --instancer-host=inst.lit.x3lfy.space
+        - --external-tls-termination
         - --metrics-bind-address=:8443
         - --leader-elect
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: ghcr.io/x3lfyn/rctf/k8s-operator:main
+        image: ghcr.io/x3lfyn/rctf/k8s-operator@sha256:c76c761546f41a8ec30a37c16f38beebe80c66cbd7158c3dafcc2b9941be1bdd
         livenessProbe:
           httpGet:
             path: /healthz

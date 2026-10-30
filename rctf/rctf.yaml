@@ -93,7 +93,7 @@ spec:
         - name: rctf
           # fork of otter-sec/rctf (main) that includes PR #235
           # (challenge integration id validation/hashing for the k8s instancer)
-          image: ghcr.io/x3lfyn/rctf:main
+          image: ghcr.io/x3lfyn/rctf@sha256:12934e0756f7eee5af226bcc6a26a5335b7f739ac25b36bcae2c1ae43875fa4e
           ports:
             - containerPort: 80
           env:

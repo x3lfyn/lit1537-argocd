@@ -16,21 +16,21 @@ with its Kubernetes instancer.
 
 ## Hostnames / routing
 
-TLS is terminated on the proxy in front of the VM, never on traefik.
+TLS is terminated on the proxy in front of the VM, never on traefik. The
+operator runs with `--external-tls-termination`: instance routes (http and
+https expose kinds) are plain HTTP on **both** node ports 80 and 443, and no
+http->https redirects are created (a cluster-side redirect would loop through
+the proxy). The proxy can forward `*.inst.lit.x3lfy.space` to either port.
 
 - **rCTF UI**: `https://board.lit.x3lfy.space` — proxy terminates TLS and
   forwards plain HTTP (Host preserved) to the node (`100.109.242.58`) on
-  port 80 or 443 (both are plain-HTTP entrypoints: `web` / `websecure`).
-- **Instances**: `<prefix>-<uid>.inst.lit.x3lfy.space` — instance hostnames
-  are one level below `inst.lit.x3lfy.space`.
-- **http expose kind (port 80)**: proxy forwards plain HTTP to node:80.
-- **https expose kind (port 443)**: proxy terminates TLS and forwards plain
-  HTTP (Host preserved) to node:443 — the `websecure` entrypoint is plain
-  HTTP on purpose. Direct `http://` hits on node:80 get a 302 to `https://`
-  from the operator's redirect route, so the proxy can forward port 80 as-is.
-- **tcp-ssl expose kind (port 1337)**: raw TCP passthrough (SNI preserved,
-  no TLS termination anywhere in the path — traefik routes by SNI and passes
-  the TLS stream through to the challenge pod).
+  port 80 or 443.
+- **Instances**: `<prefix>-<uid>.inst.lit.x3lfy.space`
+  - **http expose kind (port 80)**: served on node:80 and node:443.
+  - **https expose kind (port 443)**: served on node:80 and node:443.
+  - **tcp-ssl expose kind (port 1337)**: raw TCP passthrough (SNI preserved,
+    no TLS termination anywhere in the path — traefik routes by SNI and passes
+    the TLS stream through to the challenge pod).
 
 ## Traefik notes
 
@@ -69,12 +69,18 @@ kubectl -n rctf create secret generic rctf-secrets \
 
 - `rctf` and `rctf-instancer` use images built from the fork
   https://github.com/x3lfyn/rctf (branch `main` = upstream main + fixes),
-  published at `ghcr.io/x3lfyn/rctf:main` and `ghcr.io/x3lfyn/rctf/k8s-operator:main`:
+  published at `ghcr.io/x3lfyn/rctf` and `ghcr.io/x3lfyn/rctf/k8s-operator`
+  (pinned by digest):
   - upstream PR [#235](https://github.com/otter-sec/rctf/pull/235) — API-side
     validation/hashing of the challenge integration id (`inst-<id>-<team>` must
     fit the 63-char namespace name limit)
-  - local patch `fix(k8s-operator): bound instance namespace name to 63 chars` —
+  - `fix(k8s-operator): bound instance namespace name to 63 chars` —
     operator-side truncate+hash defense so any IDs produce a valid namespace
+  - `feat(k8s-operator): --external-tls-termination` — serve instance routes
+    as plain HTTP on web+websecure without http->https redirects (TLS is
+    terminated at the proxy; see above)
+- To update the images: push to the fork's `main`, wait for CI, then update
+  the digests in these manifests (ArgoCD rolls the workloads on digest bump).
 - `rctf-instancer/operator.yaml` is based on `apps/k8s-operator/dist/install.yaml`
   from the fork with `INSTANCER_HOST` replaced by `inst.lit.x3lfy.space`. Re-vendor
   it when updating the operator.
